@@ -66,5 +66,46 @@ int main()
         printf("Score: %d\n", twoCount * threeCount);
     }
 
+    {
+        std::string common;
+
+        for (int i = 0; i < values.size(); ++i)
+        {
+            auto a = values[i];
+            for (int j = i + 1; j < values.size(); ++j)
+            {
+                auto b = values[j];
+
+                int differences = 0;
+                for (int k = 0; k < b.size(); ++k)
+                {
+                    if (a[k] != b[k])
+                    {
+                        differences++;
+                    }
+                }
+
+                if (differences == 1)
+                {
+                    for (int k = 0; k < b.size(); ++k)
+                    {
+                        if (a[k] == b[k])
+                        {
+                            common.push_back(a[k]);
+                        }
+                    }
+                    break;
+                }
+            }
+
+            if (common.size() > 0)
+            {
+                break;
+            }
+        }
+
+        printf("Common Subsequence: %s\n", common.c_str());
+    }
+
     std::getc(stdin);
 }
