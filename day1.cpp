@@ -25,7 +25,7 @@ std::vector<int> valuesFromFile(const char * path)
 
 int main()
 {
-    auto values = valuesFromFile("day1.txt");
+    auto values = valuesFromFile("data/day1.txt");
 
     {
         int sum = 0;

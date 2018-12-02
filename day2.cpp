@@ -25,7 +25,7 @@ std::vector<std::string> valuesFromFile(const char * path)
 
 int main()
 {
-    auto values = valuesFromFile("day2.txt");
+    auto values = valuesFromFile("data/day2.txt");
 
     {
         int twoCount = 0;
