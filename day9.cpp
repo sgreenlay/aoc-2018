@@ -3,7 +3,7 @@
 #include <sstream>
 #include <string>
 
-#include <vector>
+#include <list>
 #include <map>
 
 struct parameters
@@ -41,14 +41,17 @@ int main()
 {
     auto game = parametersFromFile("data/day9.txt");
 
+    // Part 2
+    game.last_marble *= 100;
+
     int score = 0;
 
     int player = 0;
-    std::vector<int> marbles;
-    std::map<int, int> scores;
+    std::list<int> marbles;
+    std::map<int, unsigned int> scores;
 
-    int idx = 0;
     marbles.push_back(0);
+    auto pos = marbles.begin();
 
     for (int marble = 1; marble <= game.last_marble; ++marble)
     {
@@ -58,9 +61,19 @@ int main()
             // marble into the circle between the marbles that are 1 and 2 
             // marbles clockwise of the current marble.
 
-            int pos = (idx + 1) % marbles.size();
-            marbles.insert(marbles.begin() + pos + 1, marble);
-            idx = pos + 1;
+            for (int i = 0; i < 1; ++i)
+            {
+                pos++;
+
+                if (pos == marbles.end())
+                {
+                    pos = marbles.begin();
+                }
+            }
+            if (pos != marbles.end()) {
+                pos++;
+            }
+            pos = marbles.insert(pos, marble);
         }
         else
         {
@@ -75,17 +88,20 @@ int main()
 
             score = marble;
 
-            if (idx < 7)
+            for (int i = 0; i < 7; ++i)
             {
-                idx = marbles.size() + idx - 7;
-            }
-            else
-            {
-                idx = idx - 7;
+                if (pos == marbles.begin())
+                {
+                    pos = marbles.end();
+                }
+                pos--;
             }
 
-            score += marbles[idx];
-            marbles.erase(marbles.begin() + idx);
+            auto marble_to_remove = pos;
+            pos++;
+
+            score += *marble_to_remove;
+            marbles.erase(marble_to_remove);
 
             if (scores.count(player) == 0)
             {
@@ -99,15 +115,15 @@ int main()
 
         /*
         printf("[%d] ", player + 1);
-        for (int i = 0; i < marbles.size(); ++i)
+        for (auto && m : marbles)
         {
-            if (i == idx)
+            if (m == *pos)
             {
-                printf("(%d) ", marbles[i]);
+                printf("(%d) ", m);
             }
             else
             {
-                printf("%d ", marbles[i]);
+                printf("%d ", m);
             }
         }
         printf("\n");
@@ -116,7 +132,7 @@ int main()
         player = (player + 1) % game.players;
     }
 
-    int high_score = 0;
+    unsigned int high_score = 0;
     for (auto && score : scores)
     {
         if (score.second > high_score)
@@ -125,7 +141,7 @@ int main()
         }
     }
 
-    printf("High score: %d\n", high_score);
+    printf("High score: %u\n", high_score);
 
     std::getc(stdin);
 }
