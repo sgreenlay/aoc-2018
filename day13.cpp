@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <map>
+#include <set>
 #include <optional>
 
 struct point
@@ -26,6 +27,11 @@ struct layout
 
     std::optional<char> getTrack(point p)
     {
+        if ((p.x >= w) || (p.x < 0) || (p.y >= h) || (p.y < 0))
+        {
+            return {};
+        }
+
         char ch = tracks[p.y][p.x];
         if (ch == ' ')
         {
@@ -142,7 +148,8 @@ void outputMap(int iteration, layout map, std::map<point, cart> carts)
             auto p = point{ x, y };
             if (carts.count(p))
             {
-                line.push_back('a' + carts[p].id);
+                //line.push_back('a' + carts[p].id);
+                line.push_back(carts[p].ch);
             }
             else if (auto ch = map.getTrack(p))
             {
@@ -179,38 +186,16 @@ int main()
             {
                 if ((ch == '>') || (ch == '<') || (ch == 'v') || (ch == '^'))
                 {
-                    auto up = map.getTrack(point{ x, y - 1 });
-                    auto down = map.getTrack(point{ x, y + 1 });
-                    auto right = map.getTrack(point{ x + 1, y });
-                    auto left = map.getTrack(point{ x - 1, y });
-
                     carts[p] = cart{ id++, *ch, 0 };
 
-                    //  |
-                    // -x-
-                    //  |
-
                     char replacement;
-
-                    if (up && right && down && left)
-                    {
-                        replacement = '+';
-                    }
-                    else if (((ch == '>') || (ch == '<')) && (left && right))
+                    if ((ch == '>') || (ch == '<'))
                     {
                         replacement = '-';
                     }
-                    else if (((ch == 'v') || (ch == '^')) && (down && up))
+                    else if ((ch == 'v') || (ch == '^'))
                     {
                         replacement = '|';
-                    }
-                    else if ((up && right) || (down && left))
-                    {
-                        replacement = '\\';
-                    }
-                    else if ((down && right) || (up && left))
-                    {
-                        replacement = '/';
                     }
                     else
                     {
@@ -222,15 +207,38 @@ int main()
             }
         }
     }
-    //outputMap(0, map, carts);
+    //outputMap(0, map, {});
 
     int count = 0;
     std::optional<point> crash_point = {};
-    while (!crash_point)
+    while (carts.size() > 1)
     {
+        std::set<point> remove_carts;
         std::map<point, cart> next_carts;
         for (auto && current_cart : carts)
         {
+            // If someone has crashed into me
+            if (remove_carts.count(current_cart.first) > 0)
+            {
+                continue;
+            }
+
+            // If someone's going to crash into me
+            if (next_carts.count(current_cart.first) > 0)
+            {
+                if (!crash_point)
+                {
+                    crash_point = current_cart.first;
+                }
+
+                //outputMap(count, map, carts);
+                //printf("[%d] Crash at %d,%d\n", count, current_cart.first.x, current_cart.first.y);
+
+                remove_carts.emplace(current_cart.first);
+
+                continue;
+            }
+
             auto cart = current_cart.second;
             
             int x = current_cart.first.x;
@@ -257,6 +265,7 @@ int main()
                 }
                 else
                 {
+                    //outputMap(count, map, carts);
                     abort();
                 }
             }
@@ -281,6 +290,7 @@ int main()
                 }
                 else
                 {
+                    //outputMap(count, map, carts);
                     abort();
                 }
             }
@@ -305,6 +315,7 @@ int main()
                 }
                 else
                 {
+                    //outputMap(count, map, carts);
                     abort();
                 }
             }
@@ -329,29 +340,48 @@ int main()
                 }
                 else
                 {
+                    //outputMap(count, map, carts);
                     abort();
                 }
             }
             else
             {
+                //outputMap(count, map, carts);
                 abort();
             }
 
             point p_next = point{ x, y };
+
+            // If I'm going to crash into someone
             if (next_carts.count(p_next) > 0)
             {
-                crash_point = p_next;
-                break;
+                if (!crash_point)
+                {
+                    crash_point = p_next;
+                }
+
+                //outputMap(count, map, carts);
+                //printf("[%d] Crash at %d,%d\n", count, p_next.x, p_next.y);
+
+                remove_carts.emplace(p_next);
             }
-            next_carts[p_next] = cart;
+            else
+            {
+                next_carts[p_next] = cart;
+            }
         }
 
-        //outputMap(count, map, next_carts);
+        for (auto p : remove_carts)
+        {
+            next_carts.erase(p);
+        }
 
         carts = next_carts;
         count++;
     }
 
     printf("First crash is at %d,%d\n", crash_point->x, crash_point->y);
+    printf("Last cart is at %d,%d\n", carts.begin()->first.x, carts.begin()->first.y);
+
     std::getc(stdin);
 }
