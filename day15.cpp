@@ -33,9 +33,9 @@ struct character
     int health = 200;
     bool dead = false;
 
-    void hit()
+    void hit(int dmg)
     {
-        health -= 3;
+        health -= dmg;
         if (health <= 0)
         {
             dead = true;
@@ -150,12 +150,10 @@ void printScenario(scenario & s)
     }
 }
 
-int main()
+bool run_simulation(scenario scenario, int elf_attack, bool stop_on_elf_death)
 {
-    auto scenario = scenarioFromFile("data/day15.txt");
-
-    printScenario(scenario);
-    printf("\n");
+    //printScenario(scenario);
+    //printf("\n");
 
     int round = 0;
     char winner = ' ';
@@ -206,7 +204,7 @@ int main()
 
             // Create a distance map to the closest opponent(s)
             std::map<point, int> distances;
-            
+
             character * closest_target = nullptr;
             std::optional<int> closest_target_distance = {};
 
@@ -216,7 +214,7 @@ int main()
             {
                 auto p = potentials.front();
 
-                if (closest_target_distance && 
+                if (closest_target_distance &&
                     closest_target_distance.value() < p.second)
                 {
                     potentials.pop();
@@ -250,7 +248,7 @@ int main()
                         case 'X':
                         {
                             auto target = scenario.getCharacter(point);
-                            if (!closest_target || 
+                            if (!closest_target ||
                                 (distance == closest_target_distance.value() && point < closest_target->p))
                             {
                                 closest_target = target;
@@ -355,7 +353,7 @@ int main()
                             target = potential_target;
                         }
                         else if ((potential_target->health == target->health) &&
-                                 (potential_target->p < target->p))
+                            (potential_target->p < target->p))
                         {
                             target = potential_target;
                         }
@@ -367,7 +365,20 @@ int main()
                     abort();
                 }
 
-                target->hit();
+                if (currentCharacter.team == 'E')
+                {
+                    target->hit(elf_attack);
+                }
+                else
+                {
+                    target->hit(3);
+                }
+
+                if (stop_on_elf_death && target->team == 'E' && target->dead)
+                {
+                    //printf("An elf died on round %d\n", round);
+                    return false;
+                }
             }
         }
 
@@ -395,16 +406,36 @@ int main()
         //printf("\n");
     }
 
-    printScenario(scenario);
-    printf("\n");
+    //printScenario(scenario);
+    //printf("\n");
 
     int score = 0;
     for (auto && c : scenario.characters)
     {
         score += c.health;
     }
-    printf("Game ends with %c victor after %d rounds\n", winner, round);
+    printf("Game ends with %c victory after %d rounds\n", winner, round);
     printf("Score: %d\n", score * round);
+
+    return true;
+}
+
+int main()
+{
+    auto scenario = scenarioFromFile("data/day15.txt");
+
+    // Part 1
+    run_simulation(scenario, 3, false);
+
+    // Part 2
+    int elf_power = 3;
+    bool elves_won = false;
+    while (!elves_won)
+    {
+        elf_power++;
+        elves_won = run_simulation(scenario, elf_power, true);
+    }
+    printf("Elves won with an attack power of %d\n", elf_power);
 
     std::getc(stdin);
 }
