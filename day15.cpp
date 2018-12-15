@@ -1,4 +1,3 @@
-
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -153,7 +152,7 @@ void printScenario(scenario & s)
 
 int main()
 {
-    auto scenario = scenarioFromFile("data/test.txt");
+    auto scenario = scenarioFromFile("data/day15.txt");
 
     printScenario(scenario);
     printf("\n");
@@ -189,6 +188,11 @@ int main()
             std::vector<std::string> map = scenario.map;
             for (auto & character : scenario.characters)
             {
+                if (character.dead)
+                {
+                    continue;
+                }
+
                 if (character.team != currentCharacter.team)
                 {
                     map[character.p.y][character.p.x] = 'X';
@@ -220,6 +224,7 @@ int main()
                 }
 
                 distances[p.first] = p.second;
+                map[p.first.y][p.first.x] = 'v';
 
                 point directions[] = {
                     point{ p.first.x, p.first.y - 1 },
@@ -256,6 +261,7 @@ int main()
                         }
                         case '.':
                             potentials.push({ point, distance });
+                            distances[point] = distance;
                             break;
                         case '#':
                             break;
@@ -384,9 +390,9 @@ int main()
 
         round++;
 
-        printf("Round %d\n", round);
-        printScenario(scenario);
-        printf("\n");
+        //printf("Round %d\n", round);
+        //printScenario(scenario);
+        //printf("\n");
     }
 
     printScenario(scenario);
