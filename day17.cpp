@@ -232,11 +232,7 @@ int main()
     point spring = { 500, 0 };
     cs.map[spring] = '+';
 
-    cs.x_range.first = spring.x;
-    cs.x_range.second = spring.x;
-
-    cs.y_range.first = spring.y;
-    cs.y_range.second = spring.y;
+    bool initialized = false;
 
     for (auto && deposit : deposits)
     {
@@ -263,22 +259,32 @@ int main()
             y_range = std::get<std::pair<int, int>>(deposit.y);
         }
 
-        if (x_range.first < cs.x_range.first)
+        if (!initialized)
         {
-            cs.x_range.first = x_range.first;
-        }
-        else if (x_range.second > cs.x_range.second)
-        {
-            cs.x_range.second = x_range.second;
-        }
+            cs.x_range = x_range;
+            cs.y_range = y_range;
 
-        if (y_range.first < cs.y_range.first)
-        {
-            cs.y_range.first = y_range.first;
+            initialized = true;
         }
-        else if (y_range.second > cs.y_range.second)
+        else
         {
-            cs.y_range.second = y_range.second;
+            if (x_range.first < cs.x_range.first)
+            {
+                cs.x_range.first = x_range.first;
+            }
+            else if (x_range.second > cs.x_range.second)
+            {
+                cs.x_range.second = x_range.second;
+            }
+
+            if (y_range.first < cs.y_range.first)
+            {
+                cs.y_range.first = y_range.first;
+            }
+            else if (y_range.second > cs.y_range.second)
+            {
+                cs.y_range.second = y_range.second;
+            }
         }
 
         for (int y = y_range.first; y <= y_range.second; ++y)
@@ -290,6 +296,7 @@ int main()
         }
     }
 
+    spring.y = cs.y_range.first - 1;
     floodFill(spring, cs);
 
     unsigned int water = 0;
