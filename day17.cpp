@@ -300,16 +300,25 @@ int main()
     floodFill(spring, cs);
 
     unsigned int water = 0;
+    unsigned int standing_water = 0;
     for (auto && loc : cs.map)
     {
-        if ((loc.second == '|') || (loc.second == '~'))
+        switch (loc.second)
         {
-            water++;
+            case '~':
+                standing_water++;
+                [[fallthrough]];
+            case '|':
+                water++;
+                break;
+            default:
+                break;
         }
     }
 
     printCrossSection(cs);
     printf("%u squares of water\n", water);
+    printf("%u squares of standing water\n", standing_water);
 
     std::getc(stdin);
 }
