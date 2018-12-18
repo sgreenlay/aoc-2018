@@ -169,13 +169,18 @@ int main()
 
     std::optional<point> sequence;
 
-    for (int i = 0; i < 1000000000; ++i)
-    {
-        int open = 0;
-        int trees = 0;
-        int lumber = 0;
+    int open = 0;
+    int trees = 0;
+    int lumber = 0;
 
+    for (long long i = 0; i < 1000000000L; ++i)
+    {
         lumberyard next_ly{ ly.map };
+
+        open = 0;
+        trees = 0;
+        lumber = 0;
+
         for (int y = 0; y < ly.height(); ++y)
         {
             for (int x = 0; x < ly.width(); ++x)
@@ -213,28 +218,36 @@ int main()
 
         if (sequence.has_value())
         {
-            if (values[sequence->x] == value)
+            if (values[sequence->y + 1] == value)
             {
-                printf("Cycle detected from %d to %d:\n", sequence->x, sequence->y);
-                for (int j = sequence->x; j <= sequence->y; ++j)
+                if (values[sequence->x] == values[sequence->y + 1])
                 {
-                    printf("  %d: (%d, %d)\n", j, values[j].x, values[j].y);
+                    /*
+                    printf("Cycle detected from %d to %d\n", sequence->x, sequence->y);
+
+                    for (int j = sequence->x; j <= sequence->y; ++j)
+                    {
+                        int idx = j - sequence->x;
+                        printf("  %d: (%d, %d) = %d\n",
+                            idx,
+                            values[j].x, values[j].y,
+                            values[j].x * values[j].y);
+                    }
+                    */
+
+                    int start = sequence->x - 1;
+                    int cycle_length = sequence->y - start;
+                    int idx = start + (1000000000L - sequence->x) % cycle_length;
+
+                    trees = values[idx].x;
+                    lumber = values[idx].y;
+
+                    break;
                 }
-
-                int cycle_length = sequence->y - sequence->x;
-                int idx = (1000000000 - sequence->x) % cycle_length;
-                auto last_repetition = values[sequence->x + idx];
-
-                printf("There are %d wooded and %d lumberyards = %d\n", 
-                    last_repetition.x,
-                    last_repetition.y,
-                    last_repetition.x * last_repetition.y);
-
-                break;
-            }
-            else if (values[sequence->y + 1] == value)
-            {
-                sequence->y++;
+                else
+                {
+                    sequence->y++;
+                }
             }
             else
             {
@@ -249,9 +262,10 @@ int main()
         value_map[value] = i;
         values.push_back(value);
 
-
         ly = next_ly;
     }
+
+    printf("There are %d wooded and %d lumberyards = %d\n", trees, lumber, trees * lumber);
 
     std::getc(stdin);
 }
