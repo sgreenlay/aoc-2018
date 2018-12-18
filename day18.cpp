@@ -4,6 +4,25 @@
 #include <string>
 
 #include <vector>
+#include <map>
+#include <optional>
+
+struct point
+{
+    int x;
+    int y;
+
+    bool operator== (const point& p) const
+    {
+        return (p.y == this->y) && (p.x == this->x);
+    }
+};
+
+inline bool operator <(const point& a, const point& b)
+{
+    if (a.y == b.y) return (a.x < b.x);
+    return (a.y < b.y);
+}
 
 struct lumberyard
 {
@@ -145,51 +164,94 @@ int main()
     //ly.print();
     //printf("\n");
 
-    for (int i = 0; i < 10; ++i)
+    std::vector<point> values;
+    std::map<point, int> value_map;
+
+    std::optional<point> sequence;
+
+    for (int i = 0; i < 1000000000; ++i)
     {
+        int open = 0;
+        int trees = 0;
+        int lumber = 0;
+
         lumberyard next_ly{ ly.map };
         for (int y = 0; y < ly.height(); ++y)
         {
             for (int x = 0; x < ly.width(); ++x)
             {
                 next_ly.map[y][x] = ly.nextState(x, y);
+
+                switch (next_ly.map[y][x])
+                {
+                case '.':
+                    open++;
+                    break;
+                case '|':
+                    trees++;
+                    break;
+                case '#':
+                    lumber++;
+                    break;
+                case ' ':
+                default:
+                    abort();
+                    break;
+                }
             }
         }
 
         //next_ly.print();
         //printf("\n");
 
-        ly = next_ly;
-    }
-
-    int open = 0;
-    int trees = 0;
-    int lumber = 0;
-
-    for (int y = 0; y < ly.height(); ++y)
-    {
-        for (int x = 0; x < ly.width(); ++x)
+        if (i == 9)
         {
-            switch (ly.acre(x, y))
+            printf("There are %d wooded and %d lumberyards = %d\n", trees, lumber, trees * lumber);
+        }
+
+        auto value = point{ trees, lumber };
+
+        if (sequence.has_value())
+        {
+            if (values[sequence->x] == value)
             {
-            case '.':
-                open++;
-                break;
-            case '|':
-                trees++;
-                break;
-            case '#':
-                lumber++;
-                break;
-            case ' ':
-            default:
-                abort();
+                printf("Cycle detected from %d to %d:\n", sequence->x, sequence->y);
+                for (int j = sequence->x; j <= sequence->y; ++j)
+                {
+                    printf("  %d: (%d, %d)\n", j, values[j].x, values[j].y);
+                }
+
+                int cycle_length = sequence->y - sequence->x;
+                int idx = (1000000000 - sequence->x) % cycle_length;
+                auto last_repetition = values[sequence->x + idx];
+
+                printf("There are %d wooded and %d lumberyards = %d\n", 
+                    last_repetition.x,
+                    last_repetition.y,
+                    last_repetition.x * last_repetition.y);
+
                 break;
             }
+            else if (values[sequence->y + 1] == value)
+            {
+                sequence->y++;
+            }
+            else
+            {
+                sequence = {};
+            }
         }
-    }
+        else if (value_map.count(value))
+        {
+            sequence = point{ value_map[value], value_map[value] };
+        }
 
-    printf("There are %d wooded and %d lumberyards = %d\n", trees, lumber, trees * lumber);
+        value_map[value] = i;
+        values.push_back(value);
+
+
+        ly = next_ly;
+    }
 
     std::getc(stdin);
 }
