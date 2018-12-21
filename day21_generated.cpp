@@ -34,6 +34,10 @@ int main()
 
     line_28:
 
+        if (seen.empty())
+        {
+            printf("%d\n", e);
+        }
         if (seen.count(e))
         {
             printf("%d\n", last_e);
