@@ -149,7 +149,7 @@ region_type region(unsigned long long erosion)
     abort();
 }
 
-std::vector<tool> valid_tools(region_type r)
+std::set<tool> valid_tools(region_type r)
 {
     if (r == region_type::Rocky) // '.'
     {
@@ -176,36 +176,6 @@ std::vector<tool> valid_tools(region_type r)
     abort();
 }
 
-struct distance_and_tool
-{
-    int distance;
-    tool t;
-};
-
-std::vector<distance_and_tool> costs(region_type a, region_type b, tool t)
-{
-    if (a == b)
-    {
-        return { distance_and_tool{1, t} };
-    }
-
-    auto other_tools = valid_tools(b);
-
-    std::vector<distance_and_tool> cs;
-    for (auto && other_tool : other_tools)
-    {
-        if (t == other_tool)
-        {
-            cs.push_back(distance_and_tool{ 1, other_tool });
-        }
-        else
-        {
-            cs.push_back(distance_and_tool{ 7 + 1, other_tool });
-        }
-    }
-    return cs;
-}
-
 int main()
 {
     int depth = 5616;
@@ -215,10 +185,10 @@ int main()
 
     std::set<point> regions;
     
-    //std::vector<std::string> debug_output;
+    std::vector<std::string> debug_output;
     for (int y = 0; y < MAX_Y; ++y)
     {
-        //std::string debug_line;
+        std::string debug_line;
         for (int x = 0; x < MAX_X; ++x)
         {
             point p = point{ x, y };
@@ -242,18 +212,16 @@ int main()
 
             regions.emplace(p);
 
-            //debug_line.push_back(char_from_region(r));
+            debug_line.push_back(char_from_region(r));
         }
-        //debug_output.push_back(debug_line);
+        debug_output.push_back(debug_line);
     }
 
-    /*
     for (auto debug_line : debug_output)
     {
         printf("%s\n", debug_line.c_str());
     }
     printf("\n");
-    */
 
     printf("%d Risk\n", risk);
 
@@ -305,30 +273,59 @@ int main()
             point{ current.p.x, current.p.y + 1 }
         };
 
+        // From this location I can move to the an adjacent location if I have the right tool...
+        std::set<point_and_tool> possibilities;
         for (auto adj : adjs)
         {
             if (adj.x >= 0 && adj.y >= 0 && adj.x < MAX_X && adj.y < MAX_Y)
             {
-                auto adj_ds = costs(r, area_map[adj.y][adj.x], current.t);
-                for (auto adj_d : adj_ds)
+                auto adj_r = area_map[adj.y][adj.x];
+
+                if ((adj_r == r) || (valid_tools(adj_r).count(current.t) > 0))
                 {
-                    auto adj_with_tool = point_and_tool{ adj, adj_d.t };
-                    adj_d.distance += d;
-
-                    auto existing_distance = min_distances[adj.y][adj.x][(int)adj_d.t];
-
-                    if (adj_d.distance < existing_distance)
-                    {
-                        min_distances[adj.y][adj.x][(int)adj_d.t] = adj_d.distance;
-                        previous[adj.y][adj.x][(int)adj_d.t] = current;
-
-                        points_and_distances[adj_with_tool] = adj_d.distance;
-                    }
+                    possibilities.emplace(point_and_tool{ adj, current.t });
                 }
+            }
+        }
+
+        // ...or I can switch tools.
+        auto switch_tools = valid_tools(r);
+        for (auto t : switch_tools)
+        {
+            if (t != current.t)
+            {
+                possibilities.emplace(point_and_tool{ current.p, t });
+            }
+        }
+
+        for (auto possibility : possibilities)
+        {
+            auto adj = possibility.p;
+            auto adj_t = possibility.t;
+            int adj_d = d;
+
+            if (possibility.p != current.p)
+            {
+                adj_d += 1;
+            }
+            else
+            {
+                adj_d += 7;
+            }
+
+            auto existing_distance = min_distances[adj.y][adj.x][(int)adj_t];
+
+            if (adj_d < existing_distance)
+            {
+                min_distances[adj.y][adj.x][(int)adj_t] = adj_d;
+                previous[adj.y][adj.x][(int)adj_t] = current;
+
+                points_and_distances[possibility] = adj_d;
             }
         }
     }
 
+    /*
     current = point_and_tool{ target, tool::Torch };
     std::vector<point_and_tool> path;
 
@@ -344,6 +341,16 @@ int main()
         }
         current = next;
     }
+
+    for (int i = path.size() - 1; i >= 0; --i)
+    {
+        auto step = path[i];
+        printf("(%d, %d) [%c] with %d\n", 
+            step.p.x, step.p.y, 
+            char_from_region(area_map[step.p.y][step.p.x]),
+            step.t);
+    }
+    */
 
     printf("Minimum travel to target: %d\n", 
         points_and_distances[point_and_tool{ target, tool::Torch }]);
