@@ -195,11 +195,23 @@ inline bool operator <(const point_and_distance& a, const point_and_distance& b)
     return (a.p < b.p);
 }
 
+struct point_and_tool
+{
+    point p;
+    tool t;
+};
+
+inline bool operator <(const point_and_tool& a, const point_and_tool& b)
+{
+    if (a.t == b.t) return (a.p < b.p);
+    return (a.t < b.t);
+}
+
 int main()
 {
-    int depth = 5616;
-    point target = point{ 10, 785 };
-    point max = point{ target.x, target.y };
+    int depth = 510; // 5616;
+    point target = point{ 10, 10 }; // point{ 10, 785 };
+    point max = point{ target.x + 10, target.y + 10 };
 
     std::map<point, unsigned long long> geologic_indexes;
     std::map<point, region_type> area_map;
@@ -207,9 +219,11 @@ int main()
     unsigned long long risk = 0;
 
     std::set<point> regions;
-    std::string output;
+    
+    //std::vector<std::string> debug_output;
     for (int y = 0; y <= max.y; ++y)
     {
+        //std::string debug_line;
         for (int x = 0; x <= max.x; ++x)
         {
             point p = point{ x, y };
@@ -233,23 +247,28 @@ int main()
 
             regions.emplace(p);
 
-            output.push_back(char_from_region(r));
+            //debug_line.push_back(char_from_region(r));
         }
-        output.push_back('\n');
+        //debug_output.push_back(debug_line);
     }
 
-    //printf("%s", output.c_str());
+    /*
+    for (auto debug_line : debug_output)
+    {
+        printf("%s\n", debug_line.c_str());
+    }
+    printf("\n");
+    */
+
     printf("%d Risk\n", risk);
 
-    
-
-    std::map<point, distance_and_tool> min_distances;
+    std::map<point_and_tool, int> min_distances;
     std::map<point, point> previous;
 
-    point current = point{ 0, 0 };
-    min_distances[current] = distance_and_tool{ 0, tool::Torch };
+    auto current = point_and_tool{ point{ 0, 0 }, tool::Torch };
+    min_distances[current] = 0;
 
-    std::map<point, int> points_and_distances;
+    std::map<point_and_tool, int> points_and_distances;
     points_and_distances[current] = 0;
 
     while (!points_and_distances.empty())
@@ -259,96 +278,66 @@ int main()
 
         for (auto possible : points_and_distances)
         {
-            if (possible.second < current_distance)
+            if (possible.second <= current_distance)
             {
                 current = possible.first;
                 current_distance = possible.second;
             }
         }
 
-        if (current == target)
+        if (current.p == target)
         {
             break;
         }
 
         points_and_distances.erase(current);
 
-        auto r = area_map[current];
+        auto r = area_map[current.p];
         auto d = min_distances[current];
 
         std::vector<point> adjs = {
-            point{ current.x - 1, current.y },
-            point{ current.x + 1, current.y },
-            point{ current.x, current.y - 1 },
-            point{ current.x, current.y + 1 }
+            point{ current.p.x - 1, current.p.y },
+            point{ current.p.x + 1, current.p.y },
+            point{ current.p.x, current.p.y - 1 },
+            point{ current.p.x, current.p.y + 1 }
         };
 
         for (auto adj : adjs)
         {
             if (area_map.count(adj))
             {
-                auto adj_ds = costs(r, area_map[adj], d.t);
+                auto adj_ds = costs(r, area_map[adj], current.t);
                 for (auto adj_d : adj_ds)
                 {
-                    adj_d.distance += d.distance;
+                    auto adj_with_tool = point_and_tool{ adj, adj_d.t };
+                    adj_d.distance += d;
 
-                    if (min_distances.count(adj) > 0)
+                    if (min_distances.count(adj_with_tool) > 0)
                     {
-                        auto existing_distance = min_distances[adj];
+                        auto existing_distance = min_distances[adj_with_tool];
 
-                        if (adj_d.distance < existing_distance.distance)
+                        if (adj_d.distance < existing_distance)
                         {
-                            min_distances[adj] = adj_d;
-                            previous[adj] = current;
+                            min_distances[adj_with_tool] = adj_d.distance;
+                            previous[adj] = current.p;
 
-                            points_and_distances[adj] = adj_d.distance;
+                            points_and_distances[adj_with_tool] = adj_d.distance;
                         }
                     }
                     else
                     {
-                        min_distances[adj] = adj_d;
-                        previous[adj] = current;
+                        min_distances[adj_with_tool] = adj_d.distance;
+                        previous[adj] = current.p;
 
-                        points_and_distances[adj] = adj_d.distance;
+                        points_and_distances[adj_with_tool] = adj_d.distance;
                     }
                 }
             }
         }
     }
 
-    /*
-    point p = target;
-    tool t = min_distances[p].t;
-
-    std::vector<point> path;
-    std::vector<tool> tools;
-
-    while (p.x != 0 || p.y != 0)
-    {
-        path.push_back(p);
-        tools.push_back(t);
-
-        p = previous[p];
-        t = min_distances[p].t;
-    }
-    path.push_back(p);
-    tools.push_back(t);
-
-    for (int i = path.size() - 1; i >= 0; --i)
-    {
-        if (t != tools[i])
-        {
-            printf("Switch from %d to %d\n", t, tools[i]);
-        }
-
-        p = path[i];
-        t = tools[i];
-
-        printf("(%d, %d) - %d [%c]\n", p.x, p.y, tools[i], char_from_region(area_map[p]));
-    }
-    */
-
-    printf("Minimum travel to target: %d\n", points_and_distances[target]);
+    printf("Minimum travel to target: %d\n", 
+        points_and_distances[point_and_tool{ target, tool::Torch }]);
 
     std::getc(stdin);
 }
