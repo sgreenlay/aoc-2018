@@ -8,6 +8,25 @@
 #include <map>
 #include <queue>
 
+#define MAX_X 100
+#define MAX_Y 800
+#define TOOL_MAX 3
+
+enum class region_type
+{
+    Rocky = 0,
+    Wet = 1,
+    Narrow = 2,
+    Target = 3
+};
+
+enum class tool
+{
+    Neither = 0,
+    Torch = 1,
+    Climbing_Gear = 2
+};
+
 struct point
 {
     int x;
@@ -30,6 +49,24 @@ inline bool operator <(const point& a, const point& b)
     return (a.y < b.y);
 }
 
+struct point_and_tool
+{
+    point p;
+    tool t;
+};
+
+inline bool operator <(const point_and_tool& a, const point_and_tool& b)
+{
+    if (a.t == b.t) return (a.p < b.p);
+    return (a.t < b.t);
+}
+
+static unsigned long long geologic_indexes[MAX_Y][MAX_X];
+static region_type area_map[MAX_Y][MAX_X];
+
+static int min_distances[MAX_Y][MAX_X][TOOL_MAX];
+static point_and_tool previous[MAX_Y][MAX_X][TOOL_MAX];
+
 unsigned long long erosion_level(unsigned long long index, int depth)
 {
     // A region's erosion level is its geologic index plus the cave system's 
@@ -37,7 +74,7 @@ unsigned long long erosion_level(unsigned long long index, int depth)
     return (index + depth) % 20183;
 }
 
-unsigned long long geologic_index(point p, point target, int depth, std::map<point, unsigned long long> geologic_indexes)
+unsigned long long geologic_index(point p, point target, int depth)
 {
     if (p.x == 0 && p.y == 0)
     {
@@ -65,19 +102,11 @@ unsigned long long geologic_index(point p, point target, int depth, std::map<poi
     // Otherwise, the region's geologic index is the result of multiplying 
     // the erosion levels of the regions at X-1,Y and X,Y-1.
 
-    auto a = geologic_indexes[point{ p.x - 1, p.y }];
-    auto b = geologic_indexes[point{ p.x, p.y - 1 }];
+    auto a = geologic_indexes[p.y][p.x - 1];
+    auto b = geologic_indexes[p.y - 1][p.x];
 
     return erosion_level(a, depth) * erosion_level(b, depth);
 }
-
-enum class region_type
-{
-    Rocky = 0,
-    Wet = 1,
-    Narrow = 2,
-    Target = 3
-};
 
 char char_from_region(region_type r)
 {
@@ -119,13 +148,6 @@ region_type region(unsigned long long erosion)
     }
     abort();
 }
-
-enum class tool
-{
-    Neither = 1,
-    Torch = 2,
-    Climbing_Gear = 3
-};
 
 std::vector<tool> valid_tools(region_type r)
 {
@@ -184,50 +206,23 @@ std::vector<distance_and_tool> costs(region_type a, region_type b, tool t)
     return cs;
 }
 
-struct point_and_distance
-{
-    point p;
-    unsigned long long distance;
-};
-
-inline bool operator <(const point_and_distance& a, const point_and_distance& b)
-{
-    return (a.p < b.p);
-}
-
-struct point_and_tool
-{
-    point p;
-    tool t;
-};
-
-inline bool operator <(const point_and_tool& a, const point_and_tool& b)
-{
-    if (a.t == b.t) return (a.p < b.p);
-    return (a.t < b.t);
-}
-
 int main()
 {
-    int depth = 510; // 5616;
-    point target = point{ 10, 10 }; // point{ 10, 785 };
-    point max = point{ target.x + 10, target.y + 10 };
-
-    std::map<point, unsigned long long> geologic_indexes;
-    std::map<point, region_type> area_map;
+    int depth = 5616;
+    point target = point{ 10, 785 };
 
     unsigned long long risk = 0;
 
     std::set<point> regions;
     
     //std::vector<std::string> debug_output;
-    for (int y = 0; y <= max.y; ++y)
+    for (int y = 0; y < MAX_Y; ++y)
     {
         //std::string debug_line;
-        for (int x = 0; x <= max.x; ++x)
+        for (int x = 0; x < MAX_X; ++x)
         {
             point p = point{ x, y };
-            auto index = geologic_index(p, target, depth, geologic_indexes);
+            auto index = geologic_index(p, target, depth);
             auto erosion = erosion_level(index, depth);
             
             auto r = region(erosion);
@@ -242,8 +237,8 @@ int main()
                 r = region_type::Target;
             }
 
-            geologic_indexes[p] = index;
-            area_map[p] = r;
+            geologic_indexes[p.y][p.x] = index;
+            area_map[p.y][p.x] = r;
 
             regions.emplace(p);
 
@@ -262,11 +257,19 @@ int main()
 
     printf("%d Risk\n", risk);
 
-    std::map<point_and_tool, int> min_distances;
-    std::map<point, point> previous;
+    for (int y = 0; y < MAX_Y; ++y)
+    {
+        for (int x = 0; x < MAX_X; ++x)
+        {
+            for (int t = 0; t < TOOL_MAX; ++t)
+            {
+                min_distances[y][x][t] = INT_MAX;
+            }
+        }
+    }
 
     auto current = point_and_tool{ point{ 0, 0 }, tool::Torch };
-    min_distances[current] = 0;
+    min_distances[current.p.y][current.p.x][(int)tool::Torch] = 0;
 
     std::map<point_and_tool, int> points_and_distances;
     points_and_distances[current] = 0;
@@ -278,7 +281,7 @@ int main()
 
         for (auto possible : points_and_distances)
         {
-            if (possible.second <= current_distance)
+            if (possible.second < current_distance)
             {
                 current = possible.first;
                 current_distance = possible.second;
@@ -292,8 +295,8 @@ int main()
 
         points_and_distances.erase(current);
 
-        auto r = area_map[current.p];
-        auto d = min_distances[current];
+        auto r = area_map[current.p.y][current.p.x];
+        auto d = min_distances[current.p.y][current.p.x][(int)current.t];
 
         std::vector<point> adjs = {
             point{ current.p.x - 1, current.p.y },
@@ -304,36 +307,42 @@ int main()
 
         for (auto adj : adjs)
         {
-            if (area_map.count(adj))
+            if (adj.x >= 0 && adj.y >= 0 && adj.x < MAX_X && adj.y < MAX_Y)
             {
-                auto adj_ds = costs(r, area_map[adj], current.t);
+                auto adj_ds = costs(r, area_map[adj.y][adj.x], current.t);
                 for (auto adj_d : adj_ds)
                 {
                     auto adj_with_tool = point_and_tool{ adj, adj_d.t };
                     adj_d.distance += d;
 
-                    if (min_distances.count(adj_with_tool) > 0)
-                    {
-                        auto existing_distance = min_distances[adj_with_tool];
+                    auto existing_distance = min_distances[adj.y][adj.x][(int)adj_d.t];
 
-                        if (adj_d.distance < existing_distance)
-                        {
-                            min_distances[adj_with_tool] = adj_d.distance;
-                            previous[adj] = current.p;
-
-                            points_and_distances[adj_with_tool] = adj_d.distance;
-                        }
-                    }
-                    else
+                    if (adj_d.distance < existing_distance)
                     {
-                        min_distances[adj_with_tool] = adj_d.distance;
-                        previous[adj] = current.p;
+                        min_distances[adj.y][adj.x][(int)adj_d.t] = adj_d.distance;
+                        previous[adj.y][adj.x][(int)adj_d.t] = current;
 
                         points_and_distances[adj_with_tool] = adj_d.distance;
                     }
                 }
             }
         }
+    }
+
+    current = point_and_tool{ target, tool::Torch };
+    std::vector<point_and_tool> path;
+
+    int transitions = 0;
+    while (current.p.x != 0 && current.p.y != 0)
+    {
+        path.push_back(current);
+
+        auto next = previous[current.p.y][current.p.x][(int)current.t];
+        if (next.t != current.t)
+        {
+            transitions++;
+        }
+        current = next;
     }
 
     printf("Minimum travel to target: %d\n", 
