@@ -27,7 +27,7 @@ struct nanobot
     long long Z;
     unsigned long long R;
 
-    unsigned long long distance_to(const nanobot& other)
+    unsigned long long distance_to(const nanobot& other) const
     {
         long long dx = std::abs(other.X - X);
         long long dy = std::abs(other.Y - Y);
@@ -163,59 +163,188 @@ int main()
 
     // Part 2
     {
-        nanobot optimal_bot;
-        int largest_count = -1;
+        /*
+        std::map<long long, std::vector<std::pair<unsigned long long, range>>> x_ranges;
+        std::map<long long, std::vector<std::pair<unsigned long long, range>>> y_ranges;
+        std::map<long long, std::vector<std::pair<unsigned long long, range>>> z_ranges;
 
-        long long min_x = nanobots[0].X;
-        long long min_y = nanobots[0].Y;
-        long long min_z = nanobots[0].Z;
-
-        long long max_x = nanobots[0].X;
-        long long max_y = nanobots[0].Y;
-        long long max_z = nanobots[0].Z;
+        int shortest_range = nanobots[0].R;
 
         for (int i = 0; i < nanobots.size(); ++i)
         {
             auto bot = nanobots[i];
 
-            min_x = min(min_x, bot.X);
-            min_y = min(min_y, bot.Y);
-            min_z = min(min_z, bot.Z);
+            x_ranges[bot.X - bot.R].push_back({ i, range::start });
+            x_ranges[bot.X + bot.R].push_back({ i, range::end });
 
-            max_x = max(max_x, bot.X);
-            max_y = max(max_y, bot.Y);
-            max_z = max(max_z, bot.Z);
+            y_ranges[bot.Y - bot.R].push_back({ i, range::start });
+            y_ranges[bot.Y + bot.R].push_back({ i, range::end });
+
+            z_ranges[bot.Z - bot.R].push_back({ i, range::start });
+            z_ranges[bot.Z + bot.R].push_back({ i, range::end });
+
+            shortest_range = min(shortest_range, bot.R);
         }
 
-        nanobot root_bot = { 0, 0, 0, 0 };
-        for (long long x = min_x; x <= max_x; ++x)
-        {
-            for (long long y = min_y; y <= max_y; ++y)
-            {
-                for (long long z = min_z; z <= max_z; ++z)
-                {
-                    nanobot test_bot = { x, y, z, 0 };
+        auto x_overlaps = overlaps(x_ranges);
+        auto y_overlaps = overlaps(y_ranges);
+        auto z_overlaps = overlaps(z_ranges);
 
-                    int count = 0;
-                    for (int i = 0; i < nanobots.size(); ++i)
+        std::vector<std::pair<
+            std::tuple<long long, long long, long long>,
+            std::set<unsigned long long>>> largest_overlaps;
+        int largest_overlap_size = 0;
+
+        for (int x = 0; x < x_overlaps.size(); ++x)
+        {
+            auto x_overlap = x_overlaps[x];
+            if (x_overlap.second.size() < largest_overlap_size)
+            {
+                break;
+            }
+            for (int y = 0; y < y_overlaps.size(); ++y)
+            {
+                auto y_overlap = y_overlaps[y];
+                if (y_overlap.second.size() < largest_overlap_size)
+                {
+                    break;
+                }
+                for (int z = 0; z < z_overlaps.size(); ++z)
+                {
+                    auto z_overlap = z_overlaps[z];
+                    if (z_overlap.second.size() < largest_overlap_size)
                     {
-                        auto bot = nanobots[i];
-                        if (test_bot.distance_to(bot) <= bot.R)
+                        break;
+                    }
+
+                    auto xyz = std::tuple<long long, long long, long long>{
+                        x_overlap.first,
+                        y_overlap.first,
+                        z_overlap.first
+                    };
+
+                    std::set<unsigned long long> active;
+                    for (auto i : x_overlap.second)
+                    {
+                        if (y_overlap.second.count(i) > 0 &&
+                            z_overlap.second.count(i) > 0)
                         {
-                            count++;
+                            active.emplace(i);
                         }
                     }
 
+                    if (active.size() > largest_overlap_size)
+                    {
+                        largest_overlaps.clear();
+                        largest_overlap_size = active.size();
+                        largest_overlaps.push_back({ xyz, active });
+                    }
+                }
+            }
+        }
+
+        nanobot test = { 
+            std::get<0>(largest_overlaps[0].first),
+            std::get<1>(largest_overlaps[0].first),
+            std::get<2>(largest_overlaps[0].first), 
+            0
+        };
+        */
+
+        auto count_of_bots_in_range_of = [nanobots](const nanobot& test)
+        {
+            long long count = 0;
+            for (int i = 0; i < nanobots.size(); ++i)
+            {
+                auto distance = nanobots[i].distance_to(test);
+                if (distance <= nanobots[i].R)
+                {
+                    count++;
+                }
+            }
+            return count;
+        };
+
+        long long shortest_range = 49692077;
+
+        nanobot start = { 48845275, 46859071, 16929379, 0 };
+        long long start_count = count_of_bots_in_range_of(start);
+
+        long long search_zone = shortest_range;
+        long long search_interval = 1;
+
+        while (search_zone > 1)
+        {
+            nanobot local_max;
+            long long local_max_count = 0;
+
+            long long d = search_zone / search_interval;
+
+            for (long long dx = -search_zone; dx <= search_zone; dx += d)
+            {
+                for (long long dy = -search_zone; dy <= search_zone; dy += d)
+                {
+                    for (long long dz = -search_zone; dz <= search_zone; dz += d)
+                    {
+                        if (dx == 0 && dy == 0 && dz == 0)
+                        {
+                            continue;
+                        }
+
+                        nanobot test = { start.X + dx, start.Y + dy, start.Z + dz, 0 };
+                        auto count = count_of_bots_in_range_of(test);
+
+                        if (count > local_max_count)
+                        {
+                            local_max = test;
+                            local_max_count = count;
+                        }
+                        else if (count == local_max_count)
+                        {
+                            if ((test.X + test.Y + test.Z) < (local_max.X + local_max.Y + local_max.Z))
+                            {
+                                local_max = test;
+                                local_max_count = count;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (start_count > local_max_count)
+            {
+                search_zone /= 10;
+            }
+            else if (start_count == local_max_count)
+            {
+                if ((local_max.X + local_max.Y + local_max.Z) < (start.X + start.Y + start.Z))
+                {
+                    start = local_max;
+                    start_count = local_max_count;
+                }
+                else
+                {
+                    search_zone += (search_zone / 10);
+                }
+            }
+            else
+            {
+                start = local_max;
+                start_count = local_max_count;
+            }
+        }
+
+                    /*
                     if (count > largest_count)
                     {
-                        optimal_bot = test_bot;
+                        closest = test;
                         largest_count = count;
                     }
-                    else if (count == largest_count)
+                    else if (count > 0 && count == largest_count)
                     {
-                        if (test_bot.distance_to(root_bot) < optimal_bot.distance_to(root_bot))
+                        if (root.distance_to(test) < root.distance_to(closest))
                         {
-                            optimal_bot = test_bot;
+                            closest = test;
                             largest_count = count;
                         }
                     }
@@ -223,8 +352,10 @@ int main()
             }
         }
 
-        printf("The optimal position is %lld,%lld,%lld\n",
-            optimal_bot.X, optimal_bot.Y, optimal_bot.Z);
+        printf("Optimal position is %lld,%lld,%lld\n",
+            closest.X, closest.Y, closest.Z);
+            */
+
         printf("");
     }
 
