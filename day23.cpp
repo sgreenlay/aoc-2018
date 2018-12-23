@@ -137,7 +137,7 @@ long long count_of_bots_in_range_of(const nanobot test, const std::vector<nanobo
 
 int main()
 {
-    auto nanobots = nanobotsFromFile("data/test.txt");
+    auto nanobots = nanobotsFromFile("data/day23.txt");
 
     // Part 1
     /*
@@ -259,49 +259,33 @@ int main()
             }
         }
 
-        int min_x = std::get<0>(largest_overlaps[0].first);
-        int max_x = std::get<0>(largest_overlaps[0].first);
-
-        int min_y = std::get<1>(largest_overlaps[0].first);
-        int max_y = std::get<1>(largest_overlaps[0].first);
-
-        int min_z = std::get<2>(largest_overlaps[0].first);
-        int max_z = std::get<2>(largest_overlaps[0].first);
+        std::set<long long> xs;
+        std::set<long long> ys;
+        std::set<long long> zs;
 
         for (auto overlap : largest_overlaps)
         {
-            min_x = min(min_x, std::get<0>(overlap.first));
-            max_x = max(max_x, std::get<0>(overlap.first));
-
-            min_y = min(min_y, std::get<1>(overlap.first));
-            max_y = max(max_y, std::get<1>(overlap.first));
-
-            min_z = min(min_z, std::get<2>(overlap.first));
-            max_z = max(max_z, std::get<2>(overlap.first));
+            xs.emplace(std::get<0>(overlap.first));
+            ys.emplace(std::get<1>(overlap.first));
+            zs.emplace(std::get<2>(overlap.first));
         }
-
-        /*
-        min_x = 48845275;
-        max_x = 50867281;
-
-        min_y = 41468723;
-        max_y = 57136851;
-
-        min_z = 16929379;
-        max_z = 27823616;
-        */
 
         nanobot root_bot = { 0, 0, 0, 0 };
 
-        nanobot optimal_bot = { min_x, min_y, min_z, 0 };
+        nanobot optimal_bot = { 
+            std::get<0>(largest_overlaps[0].first),
+            std::get<0>(largest_overlaps[0].first),
+            std::get<0>(largest_overlaps[0].first),
+            0
+        };
         long long largest_count = count_of_bots_in_range_of(optimal_bot, nanobots);
         printf("%d\n", largest_count);
 
-        for (long long x = min_x; x <= max_x; ++x)
+        for (auto x : xs)
         {
-            for (long long y = min_y; y <= max_y; ++y)
+            for (auto y : ys)
             {
-                for (long long z = min_z; z <= max_z; ++z)
+                for (auto z : zs)
                 {
                     nanobot test_bot = { x, y, z, 0 };
                     long long count = count_of_bots_in_range_of(test_bot, nanobots);
@@ -325,8 +309,9 @@ int main()
             }
         }
 
-        printf("The optimal position is %lld,%lld,%lld\n",
-            optimal_bot.X, optimal_bot.Y, optimal_bot.Z);
+        printf("The optimal position is %lld,%lld,%lld (score %lld)\n",
+            optimal_bot.X, optimal_bot.Y, optimal_bot.Z,
+            optimal_bot.X + optimal_bot.Y + optimal_bot.Z);
 
         printf("");
     }
