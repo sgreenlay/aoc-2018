@@ -20,6 +20,24 @@ long long max(long long a, long long b)
     return b;
 }
 
+struct point
+{
+    long long X;
+    long long Y;
+    long long Z;
+};
+
+long long manhatten_distance(
+    long long X1, long long Y1, long long Z1,
+    long long X2 = 0, long long Y2 = 0, long long Z2 = 0)
+{
+    long long dx = std::abs(X2 - X1);
+    long long dy = std::abs(Y2 - Y1);
+    long long dz = std::abs(Z2 - Z1);
+
+    return dx + dy + dz;
+}
+
 struct nanobot
 {
     long long X;
@@ -29,11 +47,7 @@ struct nanobot
 
     unsigned long long distance_to(const nanobot& other) const
     {
-        long long dx = std::abs(other.X - X);
-        long long dy = std::abs(other.Y - Y);
-        long long dz = std::abs(other.Z - Z);
-
-        return dx + dy + dz;
+        return manhatten_distance(X, Y, Z, other.X, other.Y, other.Z);
     }
 };
 
@@ -82,62 +96,9 @@ std::vector<nanobot> nanobotsFromFile(const char * path)
     return nanobots;
 }
 
-enum class range
-{
-    start,
-    end
-};
-
-std::vector<std::pair<long long, std::set<unsigned long long>>> overlaps(
-    std::map<long long, std::vector<std::pair<unsigned long long, range>>>& a_range)
-{
-    std::vector<std::pair<long long, std::set<unsigned long long>>> a_overlaps;
-    std::set<unsigned long long> active;
-    for (auto a : a_range)
-    {
-        for (auto i : a.second)
-        {
-            if (i.second == range::start)
-            {
-                active.emplace(i.first);
-            }
-        }
-
-        a_overlaps.push_back({ a.first, active });
-
-        for (auto i : a.second)
-        {
-            if (i.second == range::end)
-            {
-                active.erase(i.first);
-            }
-        }
-    }
-
-    std::sort(a_overlaps.begin(), a_overlaps.end(), [](auto& a, auto& b) {
-        return a.second.size() > b.second.size();
-    });
-
-    return a_overlaps;
-}
-
-long long count_of_bots_in_range_of(const nanobot test, const std::vector<nanobot> nanobots)
-{
-    long long count = 0;
-    for (int i = 0; i < nanobots.size(); ++i)
-    {
-        auto distance = nanobots[i].distance_to(test);
-        if (distance <= nanobots[i].R)
-        {
-            count++;
-        }
-    }
-    return count;
-};
-
 int main()
 {
-    auto nanobots = nanobotsFromFile("data/day23.txt");
+    auto nanobots = nanobotsFromFile("data/test.txt");
 
     // Part 1
     /*
@@ -177,131 +138,56 @@ int main()
 
     // Part 2
     {
-        std::map<long long, std::vector<std::pair<unsigned long long, range>>> x_ranges;
-        std::map<long long, std::vector<std::pair<unsigned long long, range>>> y_ranges;
-        std::map<long long, std::vector<std::pair<unsigned long long, range>>> z_ranges;
+        long long min_x = nanobots[0].X;
+        long long min_y = nanobots[0].Y;
+        long long min_z = nanobots[0].Z;
 
-        int shortest_range = nanobots[0].R;
+        long long max_x = nanobots[0].X;
+        long long max_y = nanobots[0].Y;
+        long long max_z = nanobots[0].Z;
 
-        for (int i = 0; i < nanobots.size(); ++i)
+        for (auto bot : nanobots)
         {
-            auto bot = nanobots[i];
+            min_x = min(min_x, bot.X);
+            min_y = min(min_y, bot.Y);
+            min_z = min(min_z, bot.Z);
 
-            x_ranges[bot.X - bot.R].push_back({ i, range::start });
-            x_ranges[bot.X + bot.R].push_back({ i, range::end });
-
-            y_ranges[bot.Y - bot.R].push_back({ i, range::start });
-            y_ranges[bot.Y + bot.R].push_back({ i, range::end });
-
-            z_ranges[bot.Z - bot.R].push_back({ i, range::start });
-            z_ranges[bot.Z + bot.R].push_back({ i, range::end });
-
-            shortest_range = min(shortest_range, bot.R);
+            max_x = max(max_x, bot.X);
+            max_y = max(max_y, bot.Y);
+            max_z = max(max_z, bot.Z);
         }
 
-        auto x_overlaps = overlaps(x_ranges);
-        auto y_overlaps = overlaps(y_ranges);
-        auto z_overlaps = overlaps(z_ranges);
+        point p;
+        int largest_count = 0;
 
-        std::vector<std::pair<
-            std::tuple<long long, long long, long long>,
-            std::set<unsigned long long>>> largest_overlaps;
-        int largest_overlap_size = 0;
+        long long search_distance = 1;
 
-        for (int x = 0; x < x_overlaps.size(); ++x)
+        for (long long x = min_x; x <= max_x; x += search_distance)
         {
-            auto x_overlap = x_overlaps[x];
-            if (x_overlap.second.size() < largest_overlap_size)
+            for (long long y = min_y; y <= max_y; y += search_distance)
             {
-                break;
-            }
-            for (int y = 0; y < y_overlaps.size(); ++y)
-            {
-                auto y_overlap = y_overlaps[y];
-                if (y_overlap.second.size() < largest_overlap_size)
+                for (long long z = min_z; z <= max_z; z += search_distance)
                 {
-                    break;
-                }
-                for (int z = 0; z < z_overlaps.size(); ++z)
-                {
-                    auto z_overlap = z_overlaps[z];
-                    if (z_overlap.second.size() < largest_overlap_size)
+                    int count = 0;
+                    for (auto bot : nanobots)
                     {
-                        break;
-                    }
-
-                    auto xyz = std::tuple<long long, long long, long long>{
-                        x_overlap.first,
-                        y_overlap.first,
-                        z_overlap.first
-                    };
-
-                    std::set<unsigned long long> active;
-                    for (auto i : x_overlap.second)
-                    {
-                        if (y_overlap.second.count(i) > 0 &&
-                            z_overlap.second.count(i) > 0)
+                        if (manhatten_distance(x, y, z, bot.X, bot.Y, bot.Z) <= bot.R)
                         {
-                            active.emplace(i);
+                            count++;
                         }
                     }
 
-                    if (active.size() > largest_overlap_size)
-                    {
-                        largest_overlaps.clear();
-                    }
-                    if (active.size() >= largest_overlap_size)
-                    {
-                        largest_overlap_size = active.size();
-                        largest_overlaps.push_back({ xyz, active });
-                    }
-                }
-            }
-        }
-
-        std::set<long long> xs;
-        std::set<long long> ys;
-        std::set<long long> zs;
-
-        for (auto overlap : largest_overlaps)
-        {
-            xs.emplace(std::get<0>(overlap.first));
-            ys.emplace(std::get<1>(overlap.first));
-            zs.emplace(std::get<2>(overlap.first));
-        }
-
-        nanobot root_bot = { 0, 0, 0, 0 };
-
-        nanobot optimal_bot = { 
-            std::get<0>(largest_overlaps[0].first),
-            std::get<0>(largest_overlaps[0].first),
-            std::get<0>(largest_overlaps[0].first),
-            0
-        };
-        long long largest_count = count_of_bots_in_range_of(optimal_bot, nanobots);
-        printf("%d\n", largest_count);
-
-        for (auto x : xs)
-        {
-            for (auto y : ys)
-            {
-                for (auto z : zs)
-                {
-                    nanobot test_bot = { x, y, z, 0 };
-                    long long count = count_of_bots_in_range_of(test_bot, nanobots);
-
                     if (count > largest_count)
                     {
-                        printf("%d\n", count);
-                        optimal_bot = test_bot;
+                        p = { x, y, z };
                         largest_count = count;
                     }
-                    else if (count == largest_count)
+
+                    if (count == largest_count)
                     {
-                        if (test_bot.distance_to(root_bot) < optimal_bot.distance_to(root_bot))
+                        if (manhatten_distance(x, y, z) < manhatten_distance(p.X, p.Y, p.Z))
                         {
-                            printf("%d\n", count);
-                            optimal_bot = test_bot;
+                            p = { x, y, z };
                             largest_count = count;
                         }
                     }
@@ -309,9 +195,8 @@ int main()
             }
         }
 
-        printf("The optimal position is %lld,%lld,%lld (score %lld)\n",
-            optimal_bot.X, optimal_bot.Y, optimal_bot.Z,
-            optimal_bot.X + optimal_bot.Y + optimal_bot.Z);
+        printf("Optimal position (%lld, %lld, %lld) => %lld\n",
+            p.X, p.Y, p.Z, manhatten_distance(p.X, p.Y, p.Z));
 
         printf("");
     }
