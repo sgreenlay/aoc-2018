@@ -98,10 +98,9 @@ std::vector<nanobot> nanobotsFromFile(const char * path)
 
 int main()
 {
-    auto nanobots = nanobotsFromFile("data/test.txt");
+    auto nanobots = nanobotsFromFile("data/day23.txt");
 
     // Part 1
-    /*
     {
         nanobot leader = nanobots[0];
 
@@ -134,7 +133,6 @@ int main()
 
         printf("Nanobots in range of leader: %d\n", count);
     }
-    */
 
     // Part 2
     {
@@ -161,44 +159,67 @@ int main()
         int largest_count = 0;
 
         long long search_distance = 1;
-
-        for (long long x = min_x; x <= max_x; x += search_distance)
+        while (search_distance < max_x - min_x)
         {
-            for (long long y = min_y; y <= max_y; y += search_distance)
+            search_distance *= 2;
+        }
+
+        while (search_distance > 0)
+        {
+            for (long long x = min_x; x <= max_x; x += search_distance)
             {
-                for (long long z = min_z; z <= max_z; z += search_distance)
+                for (long long y = min_y; y <= max_y; y += search_distance)
                 {
-                    int count = 0;
-                    for (auto bot : nanobots)
+                    for (long long z = min_z; z <= max_z; z += search_distance)
                     {
-                        if (manhatten_distance(x, y, z, bot.X, bot.Y, bot.Z) <= bot.R)
+                        int count = 0;
+                        for (auto bot : nanobots)
                         {
-                            count++;
+                            if (manhatten_distance(x, y, z, bot.X, bot.Y, bot.Z) <= bot.R)
+                            {
+                                count++;
+                            }
                         }
-                    }
 
-                    if (count > largest_count)
-                    {
-                        p = { x, y, z };
-                        largest_count = count;
-                    }
-
-                    if (count == largest_count)
-                    {
-                        if (manhatten_distance(x, y, z) < manhatten_distance(p.X, p.Y, p.Z))
+                        if (count > largest_count)
                         {
                             p = { x, y, z };
                             largest_count = count;
                         }
+
+                        if (count == largest_count)
+                        {
+                            if (manhatten_distance(x, y, z) < manhatten_distance(p.X, p.Y, p.Z))
+                            {
+                                p = { x, y, z };
+                                largest_count = count;
+                            }
+                        }
                     }
                 }
+            }
+
+            if (search_distance == 1)
+            {
+                break;
+            }
+            else
+            {
+                min_x = p.X - search_distance;
+                max_x = p.X + search_distance;
+
+                min_y = p.Y - search_distance;
+                max_y = p.Y + search_distance;
+
+                min_z = p.Z - search_distance;
+                max_z = p.Z + search_distance;
+
+                search_distance /= 2;
             }
         }
 
         printf("Optimal position (%lld, %lld, %lld) => %lld\n",
             p.X, p.Y, p.Z, manhatten_distance(p.X, p.Y, p.Z));
-
-        printf("");
     }
 
     std::getc(stdin);
