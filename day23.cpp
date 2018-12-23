@@ -123,7 +123,7 @@ std::vector<std::pair<long long, std::set<unsigned long long>>> overlaps(
 
 int main()
 {
-    auto nanobots = nanobotsFromFile("data/test.txt");
+    auto nanobots = nanobotsFromFile("data/day23.txt");
 
     // Part 1
     /*
@@ -163,105 +163,68 @@ int main()
 
     // Part 2
     {
-        std::map<long long, std::vector<std::pair<unsigned long long, range>>> x_ranges;
-        std::map<long long, std::vector<std::pair<unsigned long long, range>>> y_ranges;
-        std::map<long long, std::vector<std::pair<unsigned long long, range>>> z_ranges;
+        nanobot optimal_bot;
+        int largest_count = -1;
+
+        long long min_x = nanobots[0].X;
+        long long min_y = nanobots[0].Y;
+        long long min_z = nanobots[0].Z;
+
+        long long max_x = nanobots[0].X;
+        long long max_y = nanobots[0].Y;
+        long long max_z = nanobots[0].Z;
 
         for (int i = 0; i < nanobots.size(); ++i)
         {
             auto bot = nanobots[i];
 
-            x_ranges[bot.X - bot.R].push_back({ i, range::start });
-            x_ranges[bot.X + bot.R].push_back({ i, range::end });
+            min_x = min(min_x, bot.X);
+            min_y = min(min_y, bot.Y);
+            min_z = min(min_z, bot.Z);
 
-            y_ranges[bot.Y - bot.R].push_back({ i, range::start });
-            y_ranges[bot.Y + bot.R].push_back({ i, range::end });
-
-            z_ranges[bot.Z - bot.R].push_back({ i, range::start });
-            z_ranges[bot.Z + bot.R].push_back({ i, range::end });
+            max_x = max(max_x, bot.X);
+            max_y = max(max_y, bot.Y);
+            max_z = max(max_z, bot.Z);
         }
 
-        auto x_overlaps = overlaps(x_ranges);
-        auto y_overlaps = overlaps(y_ranges);
-        auto z_overlaps = overlaps(z_ranges);
-
-        std::vector<std::pair<
-            std::tuple<long long, long long, long long>,
-            std::set<unsigned long long>>> largest_overlaps;
-        int largest_overlap_size = 0;
-
-        for (int x = 0; x < x_overlaps.size(); ++x)
+        nanobot root_bot = { 0, 0, 0, 0 };
+        for (long long x = min_x; x <= max_x; ++x)
         {
-            auto x_overlap = x_overlaps[x];
-            if (x_overlap.second.size() < largest_overlap_size)
+            for (long long y = min_y; y <= max_y; ++y)
             {
-                break;
-            }
-            for (int y = 0; y < y_overlaps.size(); ++y)
-            {
-                auto y_overlap = y_overlaps[y];
-                if (y_overlap.second.size() < largest_overlap_size)
+                for (long long z = min_z; z <= max_z; ++z)
                 {
-                    break;
-                }
-                for (int z = 0; z < z_overlaps.size(); ++z)
-                {
-                    auto z_overlap = z_overlaps[z];
-                    if (z_overlap.second.size() < largest_overlap_size)
-                    {
-                        break;
-                    }
+                    nanobot test_bot = { x, y, z, 0 };
 
-                    auto xyz = std::tuple<long long, long long, long long>{
-                        x_overlap.first,
-                        y_overlap.first,
-                        z_overlap.first
-                    };
-
-                    std::set<unsigned long long> active;
-                    for (auto i : x_overlap.second)
+                    int count = 0;
+                    for (int i = 0; i < nanobots.size(); ++i)
                     {
-                        if (y_overlap.second.count(i) > 0 &&
-                            z_overlap.second.count(i) > 0)
+                        auto bot = nanobots[i];
+                        if (test_bot.distance_to(bot) <= bot.R)
                         {
-                            active.emplace(i);
+                            count++;
                         }
                     }
 
-                    if (active.size() > largest_overlap_size)
+                    if (count > largest_count)
                     {
-                        largest_overlaps.clear();
-                        largest_overlap_size = active.size();
-                        largest_overlaps.push_back({ xyz, active });
+                        optimal_bot = test_bot;
+                        largest_count = count;
+                    }
+                    else if (count == largest_count)
+                    {
+                        if (test_bot.distance_to(root_bot) < optimal_bot.distance_to(root_bot))
+                        {
+                            optimal_bot = test_bot;
+                            largest_count = count;
+                        }
                     }
                 }
             }
         }
 
-        nanobot closest = {
-            std::get<0>(largest_overlaps[0].first),
-            std::get<1>(largest_overlaps[0].first),
-            std::get<2>(largest_overlaps[0].first),
-            0
-        };
-
-        for (int i = 0; i < nanobots.size(); ++i)
-        {
-            auto distance = nanobots[i].distance_to(closest);
-
-            printf("The nanobot at %lld,%lld,%lld is distance %u away, and so it is ",
-                nanobots[i].X, nanobots[i].Y, nanobots[i].Z, distance);
-
-            if (distance <= nanobots[i].R)
-            {
-                printf("in range\n");
-            }
-            else
-            {
-                printf("not in range\n");
-            }
-        }
-
+        printf("The optimal position is %lld,%lld,%lld\n",
+            optimal_bot.X, optimal_bot.Y, optimal_bot.Z);
         printf("");
     }
 
