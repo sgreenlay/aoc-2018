@@ -337,9 +337,11 @@ std::vector<std::tuple<long long, long long, long long>> targets(
 
         if (target_selected)
         {
+            /*
             printf("%s group %d would deal defending group %d %d damage\n",
                 t == team::immune_system ? "Immune System" : "Infection",
                 attacker.id, defenders[selected_target].id, attacker.damage_to(defenders[selected_target]));
+             */
 
             targets.push_back({ attacker_idxs[i], selected_target, selected_target_damage });
             chosen_targets.emplace(selected_target);
@@ -349,10 +351,8 @@ std::vector<std::tuple<long long, long long, long long>> targets(
     return targets;
 }
 
-int main()
+team run_scenario(scenario s, bool output)
 {
-    auto s = scenarioFromFile("data/day24.txt");
-
     while ((s.immune.size() > 0) && (s.infection.size() > 0))
     {
         // Each fight consists of two phases: target selection and attacking.
@@ -369,7 +369,7 @@ int main()
         auto immune_targets = targets(
             team::immune_system, immune, s.immune, s.infection);
 
-        printf("************ \n");
+        //printf("************ \n");
 
         // During the attacking phase, each group deals damage to the target it selected, 
         // if any. Groups attack in decreasing order of initiative, regardless of whether 
@@ -431,6 +431,7 @@ int main()
                 return a->initiative > b->initiative;
             });
 
+        bool a_target_was_killed = false;
         for (auto attack : attacks)
         {
             auto attacker = get_attacker_group(attack);
@@ -446,11 +447,23 @@ int main()
             auto t = std::get<0>(attack);
             auto killed = defender->deal_damage(damage);
 
+            /*
             printf("%s group %d attacks defending group %d, killing %lld units\n",
                 t == team::immune_system ? "Immune System" : "Infection",
                 attacker->id, defender->id, killed);
+             */
+
+            if (killed > 0)
+            {
+                a_target_was_killed = true;
+            }
         }
-        printf("============ \n");
+        //printf("============ \n");
+
+        if (!a_target_was_killed)
+        {
+            return team::none;
+        }
 
         s.immune.erase(std::remove_if(s.immune.begin(), s.immune.end(), [](group g) {
             return !g.alive();
@@ -464,30 +477,62 @@ int main()
     {
         long long sum = 0;
 
-        printf("Immune System:\n");
-        for (auto g : s.immune)
+        if (output)
         {
-            sum += g.remaining_units();
-            printf("Group %d contains %lld units\n", g.id, g.remaining_units());
+            printf("Immune System:\n");
+            for (auto g : s.immune)
+            {
+                sum += g.remaining_units();
+                printf("Group %d contains %lld units\n", g.id, g.remaining_units());
+            }
+            printf("Sum: %lld\n", sum);
         }
-        printf("Sum: %lld\n", sum);
+
+        return team::immune_system;
     }
     else if (s.immune.size() == 0)
     {
         long long sum = 0;
 
-        printf("Infection:\n");
-        for (auto g : s.infection)
+        if (output)
         {
-            sum += g.remaining_units();
-            printf("Group %d contains %lld units\n", g.id, g.remaining_units());
+            printf("Infection:\n");
+            for (auto g : s.infection)
+            {
+                sum += g.remaining_units();
+                printf("Group %d contains %lld units\n", g.id, g.remaining_units());
+            }
+            printf("Sum: %lld\n", sum);
         }
-        printf("Sum: %lld\n", sum);
+
+        return team::infection;
     }
     else
     {
-        abort();
+        return team::none;
     }
+}
+
+int main()
+{
+    auto s = scenarioFromFile("data/day24.txt");
+
+
+    int boost = 0;
+    auto winner = run_scenario(s, true);
+    while (winner != team::immune_system)
+    {
+        boost++;
+
+        for (int i = 0; i < s.immune.size(); ++i)
+        {
+            s.immune[i].attack++;
+        }
+        winner = run_scenario(s, false);
+    }
+
+    printf("%d Boost to Win\n", boost);
+    winner = run_scenario(s, true);
 
     std::getc(stdin);
 }
