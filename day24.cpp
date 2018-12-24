@@ -341,7 +341,7 @@ std::vector<std::tuple<long long, long long, long long>> targets(
                 t == team::immune_system ? "Immune System" : "Infection",
                 attacker.id, defenders[selected_target].id, attacker.damage_to(defenders[selected_target]));
 
-            targets.push_back({ i, selected_target, selected_target_damage });
+            targets.push_back({ attacker_idxs[i], selected_target, selected_target_damage });
             chosen_targets.emplace(selected_target);
         }
     }
